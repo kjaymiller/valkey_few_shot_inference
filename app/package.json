@@ -1,0 +1,21 @@
+{
+  "name": "few-shot-inference",
+  "version": "0.1.0",
+  "description": "Spin few-shot inference component backed by Aiven for Valkey vector search",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:js": "esbuild src/index.ts --bundle --outfile=dist/index.js --format=esm --platform=browser --target=es2022 --external:fermyon:* --external:spin:* --external:wasi:*",
+    "build:wasm": "mkdir -p target && j2w -i dist/index.js -o target/few-shot.wasm --trigger-type spin3-http",
+    "build": "npm run build:js && npm run build:wasm",
+    "seed": "node scripts/seed.mjs"
+  },
+  "dependencies": {
+    "@fermyon/spin-sdk": "^3.0.0",
+    "itty-router": "^5.0.18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

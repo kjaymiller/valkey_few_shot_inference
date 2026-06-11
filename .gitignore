@@ -1,0 +1,22 @@
+# OpenTofu / Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+infra/*.tfvars
+!infra/*.tfvars.example
+infra/.terraform.tfstate.lock.info
+
+# Node / Spin build artifacts
+app/node_modules/
+app/dist/
+app/target/
+app/.spin/
+
+# mise local overrides (keep the committed mise.toml)
+mise.local.toml
+.mise.local.toml
+
+# Local env
+.env
+*.log

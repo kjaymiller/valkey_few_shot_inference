@@ -1,0 +1,32 @@
+spin_manifest_version = 2
+
+[application]
+name = "few-shot-inference"
+version = "0.1.0"
+authors = ["Aiven Labs"]
+description = "Few-shot inference: embed input, KNN-search Valkey for similar past wins, inject as examples before calling the LLM."
+
+[[trigger.http]]
+route = "/..."
+component = "few-shot"
+
+[component.few-shot]
+source = "target/few-shot.wasm"
+exclude_files = ["**/node_modules"]
+# Spin's serverless AI: an embedding model and a chat model.
+ai_models = ["all-minilm-l6-v2", "llama2-chat"]
+# The outbound Redis/Valkey host the component is allowed to dial.
+# %{...} reads from a Spin variable so we don't hardcode the Aiven host.
+allowed_outbound_hosts = ["redis://*:*", "rediss://*:*"]
+
+[component.few-shot.build]
+command = "npm run build"
+workdir = "."
+watch = ["src/**/*.ts"]
+
+[component.few-shot.variables]
+valkey_url = "{{ valkey_url }}"
+
+[variables]
+# Override at deploy time: spin up --variable valkey_url="rediss://..."
+valkey_url = { required = true, secret = true }

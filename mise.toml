@@ -1,0 +1,47 @@
+# mise manages the toolchain for this workshop so everyone runs the same
+# versions. Install everything with:  mise install
+#
+# Note: the bare `spin` in mise's registry resolves to the *Spinnaker* CLI.
+# Fermyon Spin (the WebAssembly runtime this demo uses) comes from the
+# fermyon/spin GitHub releases via the `github` backend.
+
+[tools]
+node = "22"
+opentofu = "1"
+"github:fermyon/spin" = "3"
+
+[env]
+# Convenience: once `tofu apply` has run in infra/, you can
+#   export VALKEY_URL=$(mise run valkey-url)
+# (see [tasks] below) instead of remembering the output name.
+
+[tasks.infra-up]
+description = "Provision Aiven for Valkey on Akamai"
+dir = "infra"
+run = ["tofu init", "tofu apply"]
+
+[tasks.infra-down]
+description = "Tear down all provisioned infrastructure"
+dir = "infra"
+run = "tofu destroy"
+
+[tasks.valkey-url]
+description = "Print the Valkey connection URI (raw, for export)"
+dir = "infra"
+run = "tofu output -raw valkey_service_uri"
+
+[tasks.build]
+description = "Install deps and build the Spin component to Wasm"
+dir = "app"
+run = ["npm install", "spin build"]
+
+[tasks.up]
+description = "Run the Spin app (requires VALKEY_URL in the environment)"
+dir = "app"
+run = 'spin up --variable valkey_url="$VALKEY_URL"'
+
+[tasks.seed]
+description = "Seed the example bank against a running app"
+dir = "app"
+env = { APP_URL = "http://127.0.0.1:3000" }
+run = "npm run seed"
