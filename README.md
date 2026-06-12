@@ -60,8 +60,8 @@ export VALKEY_URL="$(tofu output -raw valkey_service_uri)"
 ```
 
 `valkey_service_uri` is a full `rediss://user:pass@host:port` URL. Aiven for
-Valkey ships the `valkey-search` module on `startup-4` and larger plans, which
-is what powers the `FT.CREATE` / `FT.SEARCH` (HNSW + KNN) commands below.
+Valkey ships the `valkey-search` module on all plans, which is what powers the
+`FT.CREATE` / `FT.SEARCH` (HNSW + KNN) commands below.
 
 ## 2. Build & run the Spin app
 

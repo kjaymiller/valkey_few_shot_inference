@@ -5,6 +5,6 @@ aiven_project = "your-aiven-project-name"
 # what your project can reach.
 cloud_name = "akamai-us-east"
 
-# startup-4 is the smallest plan that includes the valkey-search capability.
+# valkey-search is included on all Aiven for Valkey plans.
 valkey_plan  = "startup-4"
 service_name = "few-shot-valkey"
