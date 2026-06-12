@@ -26,8 +26,14 @@ engine. The system gets better at a task the more good examples it accumulates.
 
 ## Prerequisites
 
-The toolchain (OpenTofu, Fermyon Spin, Node) is pinned in `mise.toml`. With
-[mise](https://mise.jdx.dev) installed, one command gets exact versions:
+You'll need the following installed:
+
+- [OpenTofu](https://opentofu.org) ≥ 1.6
+- [Fermyon Spin](https://developer.fermyon.com/spin/install) ≥ 3.0 (serverless AI support)
+- Node.js ≥ 18 (`mise.toml` pins node 22)
+
+These versions are pinned in `mise.toml`. Optionally, if you use
+[mise](https://mise.jdx.dev), one command installs all the correct versions:
 
 ```bash
 mise install        # installs node 22, opentofu 1.x, fermyon spin 3.x
@@ -36,14 +42,8 @@ mise install        # installs node 22, opentofu 1.x, fermyon spin 3.x
 > Heads-up: mise's registry `spin` is the *Spinnaker* CLI. This repo pins
 > `github:fermyon/spin` (the WebAssembly runtime) to avoid the name clash.
 
-Prefer not to use mise? Install manually:
-
-- [OpenTofu](https://opentofu.org) ≥ 1.6
-- [Fermyon Spin](https://developer.fermyon.com/spin/install) ≥ 3.0 (serverless AI support)
-- Node.js ≥ 18
-
-Either way you also need an [Aiven account](https://console.aiven.io) + API
-token (`export AIVEN_TOKEN=…`).
+You also need an [Aiven account](https://console.aiven.io) + API token
+(`export AIVEN_TOKEN=…`).
 
 ## 1. Provision Valkey on Akamai
 
