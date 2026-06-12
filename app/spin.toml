@@ -35,6 +35,8 @@ valkey_url = "{{ valkey_url }}"
 inference_api_url = "{{ inference_api_url }}"
 chat_model = "{{ chat_model }}"
 inference_api_key = "{{ inference_api_key }}"
+cache_threshold = "{{ cache_threshold }}"
+cache_ttl_seconds = "{{ cache_ttl_seconds }}"
 
 [variables]
 # Override at deploy time, e.g.:
@@ -52,3 +54,9 @@ inference_api_url = { default = "http://localhost:11434/v1/chat/completions" }
 chat_model = { default = "gpt-oss:20b" }
 # Bearer token for hosted providers. Empty is fine for local Ollama.
 inference_api_key = { default = "", secret = true }
+# Semantic response cache. A new request reuses a cached completion when its
+# input is at least this cosine-similar to a past one (and was built from the
+# same retrieved examples). 1.0 = exact match only; lower = more aggressive.
+cache_threshold = { default = "0.95" }
+# How long (seconds) a cached completion lives. 0 disables expiry.
+cache_ttl_seconds = { default = "3600" }

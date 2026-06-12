@@ -31,6 +31,13 @@ const KEY_PREFIX = "example:";
 const VECTOR_DIM = 384; // all-minilm-l6-v2 output dimension
 const TOP_K = 3;
 
+// Semantic response cache. A second HNSW index, separate from the example bank
+// so cached raw answers never leak into few-shot retrieval. A request is a
+// cache hit when a past entry's input is similar enough AND it was generated
+// from the same retrieved few-shot examples (see examplesFingerprint).
+const CACHE_INDEX = "idx:cache";
+const CACHE_PREFIX = "cache:";
+
 // Pull the Valkey connection string from a Spin variable (see spin.toml).
 function valkeyUrl(): string {
   const url = Variables.get("valkey_url");
@@ -54,6 +61,18 @@ function chatModel(): string {
 // Ollama needs none, so this is allowed to be empty.
 function inferenceApiKey(): string {
   return Variables.get("inference_api_key") ?? "";
+}
+
+// Minimum cosine similarity for a cached response to count as a hit. High by
+// default so only near-identical questions reuse an answer.
+function cacheThreshold(): number {
+  const v = parseFloat(Variables.get("cache_threshold") ?? "");
+  return Number.isFinite(v) ? v : 0.95;
+}
+// Cache entry lifetime in seconds (0 disables expiry). Default 1 hour.
+function cacheTtlSeconds(): number {
+  const v = parseInt(Variables.get("cache_ttl_seconds") ?? "", 10);
+  return Number.isFinite(v) && v >= 0 ? v : 3600;
 }
 
 // Embed a single piece of text and return its float vector.
@@ -103,8 +122,17 @@ function resultToString(r: { tag: string; val?: unknown }): string {
   }
 }
 
-// Ensure the HNSW vector index exists. FT.CREATE errors if it already exists,
-// so we treat an "Index already exists" failure as success (idempotent).
+// FT.CREATE errors if the index already exists. Swallow exactly that failure so
+// index creation is idempotent; rethrow anything else. Spin throws a tagged
+// error object whose human-readable message lives in `.payload.val` (and
+// sometimes `.val`), not in String(e), so check all.
+function ignoreAlreadyExists(e: unknown): void {
+  const err = e as { val?: unknown; payload?: { val?: unknown } };
+  const msg = `${err?.payload?.val ?? ""} ${err?.val ?? ""} ${String(e)}`;
+  if (!msg.includes("already exists")) throw e;
+}
+
+// Ensure the HNSW vector index for the few-shot example bank exists.
 function ensureIndex(conn: ReturnType<typeof Redis.open>): void {
   try {
     conn.execute("FT.CREATE", [
@@ -120,11 +148,30 @@ function ensureIndex(conn: ReturnType<typeof Redis.open>): void {
       arg("DISTANCE_METRIC"), arg("COSINE"),
     ]);
   } catch (e) {
-    // Spin throws a tagged error object whose human-readable message lives in
-    // `.payload.val` (and sometimes `.val`), not in String(e). Check all.
-    const err = e as { val?: unknown; payload?: { val?: unknown } };
-    const msg = `${err?.payload?.val ?? ""} ${err?.val ?? ""} ${String(e)}`;
-    if (!msg.includes("already exists")) throw e;
+    ignoreAlreadyExists(e);
+  }
+}
+
+// Ensure the HNSW vector index for the semantic response cache exists. Same
+// vector setup as the example bank, plus a `fingerprint` TAG so a KNN search
+// can be scoped to entries built from the same few-shot examples.
+function ensureCacheIndex(conn: ReturnType<typeof Redis.open>): void {
+  try {
+    conn.execute("FT.CREATE", [
+      arg(CACHE_INDEX),
+      arg("ON"), arg("HASH"),
+      arg("PREFIX"), arg("1"), arg(CACHE_PREFIX),
+      arg("SCHEMA"),
+      arg("input"), arg("TEXT"),
+      arg("completion"), arg("TEXT"),
+      arg("fingerprint"), arg("TAG"),
+      arg("embedding"), arg("VECTOR"), arg("HNSW"), arg("6"),
+      arg("TYPE"), arg("FLOAT32"),
+      arg("DIM"), arg(String(VECTOR_DIM)),
+      arg("DISTANCE_METRIC"), arg("COSINE"),
+    ]);
+  } catch (e) {
+    ignoreAlreadyExists(e);
   }
 }
 
@@ -182,8 +229,8 @@ function searchExamples(
 // Count how many examples are currently in the bank. valkey-search rejects a
 // bare "*" query, so we read num_docs from FT.INFO instead. The reply is a
 // flat [field, value, field, value, ...] list; find num_docs and take the next.
-function countExamples(conn: ReturnType<typeof Redis.open>): number {
-  const raw = conn.execute("FT.INFO", [arg(INDEX_NAME)]).map(resultToString);
+function countDocs(conn: ReturnType<typeof Redis.open>, index: string): number {
+  const raw = conn.execute("FT.INFO", [arg(index)]).map(resultToString);
   const i = raw.indexOf("num_docs");
   return i >= 0 ? parseInt(raw[i + 1], 10) || 0 : 0;
 }
@@ -214,6 +261,100 @@ function hash(s: string): string {
     h = Math.imul(h, 0x01000193);
   }
   return (h >>> 0).toString(16);
+}
+
+// A fingerprint of the few-shot examples a completion was generated from. The
+// cache only reuses an entry if the SAME examples would be retrieved again, so
+// adding/removing examples from the bank doesn't serve stale answers. Order is
+// stable (KNN returns nearest-first), so we hash the example keys in order.
+function examplesFingerprint(examples: Example[]): string {
+  return hash(examples.map((e) => e.prompt).join(" ")) || "none";
+}
+
+interface CacheHit {
+  completion: string;
+  similarity: number;
+}
+
+// Look for a cached completion semantically close to `input` AND built from the
+// same few-shot examples (fingerprint). Returns the hit only if similarity
+// meets the threshold. valkey-search needs a TAG prefilter syntax of the form
+// `@field:{value}` combined with the KNN clause.
+function lookupCache(
+  conn: ReturnType<typeof Redis.open>,
+  queryVec: number[],
+  fingerprint: string,
+): CacheHit | null {
+  let raw;
+  try {
+    raw = conn.execute("FT.SEARCH", [
+      arg(CACHE_INDEX),
+      arg(`@fingerprint:{${fingerprint}}=>[KNN 1 @embedding $vec AS score]`),
+      arg("PARAMS"), arg("2"), arg("vec"), bytes(floatsToBytes(queryVec)),
+      arg("RETURN"), arg("2"), arg("completion"), arg("score"),
+      arg("DIALECT"), arg("2"),
+    ]);
+  } catch {
+    // Empty index or query miss — treat as no hit.
+    return null;
+  }
+
+  const flat = raw.map(resultToString);
+  let completion: string | null = null;
+  let score = 1;
+  for (let i = 1; i < flat.length; i++) {
+    if (flat[i] === "completion") completion = flat[i + 1] ?? "";
+    if (flat[i] === "score") score = parseFloat(flat[i + 1] ?? "1");
+  }
+  if (completion == null) return null;
+
+  const similarity = 1 - score; // cosine distance -> similarity
+  if (similarity < cacheThreshold()) return null;
+  return { completion, similarity: Number(similarity.toFixed(4)) };
+}
+
+// Write a completion into the semantic cache, keyed by input content +
+// fingerprint so distinct example sets get distinct entries. Applies the TTL.
+function storeCache(
+  conn: ReturnType<typeof Redis.open>,
+  input: string,
+  completion: string,
+  queryVec: number[],
+  fingerprint: string,
+): void {
+  const id = `${CACHE_PREFIX}${fingerprint}:${hash(input)}`;
+  conn.execute("HSET", [
+    arg(id),
+    arg("input"), arg(input),
+    arg("completion"), arg(completion),
+    arg("fingerprint"), arg(fingerprint),
+    arg("embedding"), bytes(floatsToBytes(queryVec)),
+  ]);
+  const ttl = cacheTtlSeconds();
+  if (ttl > 0) conn.execute("EXPIRE", [arg(id), { tag: "int64", val: BigInt(ttl) }]);
+}
+
+// Delete every cache entry (keys carry the CACHE_PREFIX). Returns the count
+// removed. Leaves the example bank untouched.
+function clearCache(conn: ReturnType<typeof Redis.open>): number {
+  let removed = 0;
+  let cursor = "0";
+  do {
+    const reply = conn.execute("SCAN", [
+      arg(cursor),
+      arg("MATCH"), arg(`${CACHE_PREFIX}*`),
+      arg("COUNT"), { tag: "int64", val: 100n },
+    ]);
+    cursor = resultToString(reply[0]);
+    for (let i = 1; i < reply.length; i++) {
+      const key = resultToString(reply[i]);
+      if (key) {
+        conn.execute("DEL", [arg(key)]);
+        removed++;
+      }
+    }
+  } while (cursor !== "0");
+  return removed;
 }
 
 interface ChatMessage {
@@ -335,7 +476,16 @@ router.get("/health", () => json({ status: "ok" }));
 router.get("/stats", () => {
   const conn = Redis.open(valkeyUrl());
   ensureIndex(conn);
-  return json({ exampleCount: countExamples(conn) });
+  return json({
+    exampleCount: countDocs(conn, INDEX_NAME),
+    cacheCount: countDocs(conn, CACHE_INDEX),
+  });
+});
+
+// POST /cache/clear  -> flush all semantic-cache entries (example bank intact)
+router.post("/cache/clear", () => {
+  const conn = Redis.open(valkeyUrl());
+  return json({ cleared: clearCache(conn) });
 });
 
 // Serve a tiny single-page UI for poking at /infer and /feedback by hand.
@@ -374,9 +524,10 @@ router.post("/retrieve", async (req) => {
 // The retrieval (embed + KNN) runs first and its result is flushed before the
 // slow LLM stream begins, so the UI shows examples instantly then fills in text.
 router.post("/infer/stream", async (req) => {
-  const body = (await req.json()) as { input?: string };
+  const body = (await req.json()) as { input?: string; noCache?: boolean };
   const input = body?.input?.trim();
   if (!input) return json({ error: "missing 'input'" }, 400);
+  const noCache = !!body?.noCache;
 
   const encoder = new TextEncoder();
   const sse = (event: string, data: unknown) =>
@@ -387,7 +538,10 @@ router.post("/infer/stream", async (req) => {
       try {
         const conn = Redis.open(valkeyUrl());
         ensureIndex(conn);
-        const examples = searchExamples(conn, embed(input));
+        ensureCacheIndex(conn);
+        const queryVec = embed(input);
+        const examples = searchExamples(conn, queryVec);
+        const fingerprint = examplesFingerprint(examples);
 
         // Flush the retrieved examples right away — this is the fast part.
         controller.enqueue(sse("examples", {
@@ -398,12 +552,29 @@ router.post("/infer/stream", async (req) => {
           })),
         }));
 
-        // Now stream the LLM completion token-by-token.
+        // Cache hit: emit the whole cached completion as one delta and finish,
+        // skipping the (slow) LLM call entirely.
+        if (!noCache) {
+          const hit = lookupCache(conn, queryVec, fingerprint);
+          if (hit) {
+            controller.enqueue(sse("cached", { similarity: hit.similarity }));
+            controller.enqueue(sse("delta", { text: hit.completion }));
+            controller.enqueue(sse("done", {
+              usage: { promptTokenCount: 0, generatedTokenCount: 0 },
+              cached: true,
+            }));
+            return;
+          }
+        }
+
+        // Miss: stream the LLM completion token-by-token, accumulating the full
+        // text so we can write it to the cache once complete.
         const upstream = await chatCompletionStream(buildMessages(input, examples));
         const reader = upstream.body!.getReader();
         const decoder = new TextDecoder();
         let buf = "";
         let usage: unknown = null;
+        let full = "";
 
         for (;;) {
           const { value, done } = await reader.read();
@@ -421,7 +592,10 @@ router.post("/infer/stream", async (req) => {
             try {
               const chunk = JSON.parse(payload);
               const text = deltaText(chunk);
-              if (text) controller.enqueue(sse("delta", { text }));
+              if (text) {
+                full += text;
+                controller.enqueue(sse("delta", { text }));
+              }
               if (chunk.usage) usage = chunk.usage;
             } catch {
               // Ignore partial/non-JSON keepalive lines.
@@ -429,12 +603,16 @@ router.post("/infer/stream", async (req) => {
           }
         }
 
+        const completion = full.trim();
+        if (completion) storeCache(conn, input, completion, queryVec, fingerprint);
+
         const u = usage as { prompt_tokens?: number; completion_tokens?: number } | null;
         controller.enqueue(sse("done", {
           usage: {
             promptTokenCount: u?.prompt_tokens ?? 0,
             generatedTokenCount: u?.completion_tokens ?? 0,
           },
+          cached: false,
         }));
       } catch (e) {
         controller.enqueue(sse("error", { error: String((e as Error)?.message ?? e) }));
@@ -452,28 +630,51 @@ router.post("/infer/stream", async (req) => {
   });
 });
 
-// POST /infer  { "input": "..." }
+// POST /infer  { "input": "...", "noCache"?: true }
+// Set noCache to skip the cache lookup (a fresh completion is still written to
+// the cache afterwards).
 router.post("/infer", async (req) => {
-  const body = (await req.json()) as { input?: string };
+  const body = (await req.json()) as { input?: string; noCache?: boolean };
   const input = body?.input?.trim();
   if (!input) return json({ error: "missing 'input'" }, 400);
 
   const conn = Redis.open(valkeyUrl());
   ensureIndex(conn);
+  ensureCacheIndex(conn);
 
   const queryVec = embed(input);
   const examples = searchExamples(conn, queryVec);
+  const fingerprint = examplesFingerprint(examples);
+  const fewShotExamples = examples.map((e) => ({
+    prompt: e.prompt,
+    similarity: Number((1 - e.score).toFixed(4)), // cosine sim from distance
+  }));
+
+  // Cache lookup: same-ish input built from the same examples → reuse.
+  if (!body?.noCache) {
+    const hit = lookupCache(conn, queryVec, fingerprint);
+    if (hit) {
+      return json({
+        input,
+        completion: hit.completion,
+        fewShotExamples,
+        usage: { promptTokenCount: 0, generatedTokenCount: 0 },
+        cached: true,
+        cacheSimilarity: hit.similarity,
+      });
+    }
+  }
 
   const inference = await chatCompletion(buildMessages(input, examples));
+  const completion = inference.text.trim();
+  if (completion) storeCache(conn, input, completion, queryVec, fingerprint);
 
   return json({
     input,
-    completion: inference.text.trim(),
-    fewShotExamples: examples.map((e) => ({
-      prompt: e.prompt,
-      similarity: Number((1 - e.score).toFixed(4)), // cosine sim from distance
-    })),
+    completion,
+    fewShotExamples,
     usage: inference.usage,
+    cached: false,
   });
 });
 
@@ -552,19 +753,37 @@ const INDEX_HTML = `<!doctype html>
   .meta { font-size: .8rem; color: #888; margin-top: 1rem; }
   .err { color: #ef4444; }
   .hidden { display: none; }
+  .row { display: flex; align-items: center; gap: 1rem; }
+  .inline { display: inline-flex; align-items: center; gap: .35rem; font-weight: 400; margin: 1rem 0 0; }
+  .inline input { width: auto; }
+  .badge {
+    font-size: .75rem; font-weight: 600; padding: .1rem .5rem;
+    border-radius: 999px; background: #16a34a; color: #fff; vertical-align: middle;
+  }
+  button.link {
+    background: none; color: #3b82f6; padding: 0; margin: 0;
+    font-size: .8rem; text-decoration: underline; font-weight: 400;
+  }
 </style>
 </head>
 <body>
   <h1>Few-shot inference</h1>
   <p class="sub">Embed &rarr; KNN-search Valkey for similar past wins &rarr; inject as examples &rarr; complete.</p>
-  <p class="sub">Example bank: <strong id="count">…</strong> stored</p>
+  <p class="sub">
+    Example bank: <strong id="count">…</strong> stored &middot;
+    Cache: <strong id="cacheCount">…</strong> entries
+    <button id="clearCache" class="link">clear</button>
+  </p>
 
   <label for="input">Your request</label>
   <textarea id="input" placeholder="e.g. Write a friendly out-of-office reply"></textarea>
-  <button id="infer">Run inference</button>
+  <div class="row">
+    <button id="infer">Run inference</button>
+    <label class="inline"><input type="checkbox" id="noCache" /> skip cache</label>
+  </div>
 
   <div id="result" class="card hidden">
-    <strong>Completion</strong>
+    <strong>Completion</strong> <span id="cacheBadge" class="badge hidden"></span>
     <div id="completion" class="completion"></div>
 
     <div id="examples" class="examples"></div>
@@ -585,8 +804,10 @@ async function refreshCount() {
     const res = await fetch("/stats");
     const data = await res.json();
     $("count").textContent = data.exampleCount;
+    $("cacheCount").textContent = data.cacheCount ?? 0;
   } catch {
     $("count").textContent = "?";
+    $("cacheCount").textContent = "?";
   }
 }
 refreshCount();
@@ -623,15 +844,21 @@ function onSSE(event, data) {
     renderExamples(data.fewShotExamples);
     $("completion").textContent = "";
     lastInput = data.input;
+  } else if (event === "cached") {
+    // Cache hit: flag it; the cached completion arrives as the next delta.
+    const badge = $("cacheBadge");
+    badge.textContent = "cached ✓ sim " + data.similarity;
+    badge.classList.remove("hidden");
   } else if (event === "delta") {
     // First token replaces the "Generating…" placeholder.
     lastCompletion += data.text;
     $("completion").textContent = lastCompletion;
   } else if (event === "done") {
     const u = data.usage || {};
-    $("meta").textContent =
-      "tokens: " + (u.promptTokenCount ?? "?") + " prompt / " +
-      (u.generatedTokenCount ?? "?") + " generated";
+    $("meta").textContent = data.cached
+      ? "served from cache (0 tokens)"
+      : "tokens: " + (u.promptTokenCount ?? "?") + " prompt / " +
+        (u.generatedTokenCount ?? "?") + " generated";
     if (!lastCompletion) $("completion").textContent = "(empty)";
   } else if (event === "error") {
     showError("Inference failed: " + data.error);
@@ -646,6 +873,7 @@ $("infer").onclick = async () => {
   $("infer").textContent = "Running…";
   $("promote").disabled = true;
   $("promoteMsg").textContent = "";
+  $("cacheBadge").classList.add("hidden");
   lastInput = input;
   lastCompletion = "";
   $("completion").textContent = "Generating completion…";
@@ -656,7 +884,7 @@ $("infer").onclick = async () => {
     const res = await fetch("/infer/stream", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ input }),
+      body: JSON.stringify({ input, noCache: $("noCache").checked }),
     });
     if (!res.ok || !res.body) {
       throw new Error("HTTP " + res.status);
@@ -687,11 +915,22 @@ $("infer").onclick = async () => {
       }
     }
     $("promote").disabled = false;
+    refreshCount(); // a miss just added a cache entry
   } catch (e) {
     showError("Inference failed: " + e.message);
   } finally {
     $("infer").disabled = false;
     $("infer").textContent = "Run inference";
+  }
+};
+
+$("clearCache").onclick = async () => {
+  try {
+    const data = await postJSON("/cache/clear", {});
+    $("cacheCount").textContent = "0";
+    $("promoteMsg").textContent = "Cleared " + data.cleared + " cache entries";
+  } catch (e) {
+    showError("Clear cache failed: " + e.message);
   }
 };
 
