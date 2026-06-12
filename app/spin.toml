@@ -13,11 +13,17 @@ component = "few-shot"
 [component.few-shot]
 source = "target/few-shot.wasm"
 exclude_files = ["**/node_modules"]
-# Spin's serverless AI: an embedding model and a chat model.
-ai_models = ["all-minilm-l6-v2", "llama2-chat"]
-# The outbound Redis/Valkey host the component is allowed to dial.
-# %{...} reads from a Spin variable so we don't hardcode the Aiven host.
-allowed_outbound_hosts = ["redis://*:*", "rediss://*:*"]
+# Spin's serverless AI: the embedding model (chat is served over HTTP by the
+# OpenAI-compatible endpoint configured below).
+ai_models = ["all-minilm-l6-v2"]
+# Hosts the component is allowed to dial: Valkey, plus the inference providers.
+# Broad https://*:* covers OpenAI and Anthropic; localhost covers Ollama.
+allowed_outbound_hosts = [
+  "redis://*:*",
+  "rediss://*:*",
+  "http://localhost:11434",
+  "https://*:*",
+]
 
 [component.few-shot.build]
 command = "npm run build"
@@ -26,7 +32,23 @@ watch = ["src/**/*.ts"]
 
 [component.few-shot.variables]
 valkey_url = "{{ valkey_url }}"
+inference_api_url = "{{ inference_api_url }}"
+chat_model = "{{ chat_model }}"
+inference_api_key = "{{ inference_api_key }}"
 
 [variables]
-# Override at deploy time: spin up --variable valkey_url="rediss://..."
+# Override at deploy time, e.g.:
+#   spin up --variable valkey_url="rediss://..." \
+#           --variable inference_api_url="http://localhost:11434/v1/chat/completions" \
+#           --variable chat_model="gpt-oss:20b"
 valkey_url = { required = true, secret = true }
+# OpenAI-compatible chat completions endpoint. Examples:
+#   Ollama:    http://localhost:11434/v1/chat/completions
+#   OpenAI:    https://api.openai.com/v1/chat/completions
+#   Anthropic: https://api.anthropic.com/v1/chat/completions
+inference_api_url = { default = "http://localhost:11434/v1/chat/completions" }
+# Model name as the provider expects it (e.g. "gpt-oss:20b", "gpt-4o",
+# "claude-opus-4-8").
+chat_model = { default = "gpt-oss:20b" }
+# Bearer token for hosted providers. Empty is fine for local Ollama.
+inference_api_key = { default = "", secret = true }

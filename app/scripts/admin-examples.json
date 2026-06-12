@@ -1,0 +1,502 @@
+[
+  {
+    "input": "Schedule a 30-minute meeting with the marketing team about the quarterly budget",
+    "completion": "Hi the marketing team, could we set up a 30-minute meeting to discuss the quarterly budget? I'm free next Tuesday at 10am — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to Priya about the deadline for performance reviews",
+    "completion": "Hi Priya, a friendly reminder that performance reviews is due tomorrow afternoon. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to Sam after our meeting about the security review",
+    "completion": "Hi Sam, thanks for your time discussing the security review. To recap, we agreed on the next steps and I'll circle back this Friday. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for next week",
+    "completion": "Thanks for your email. I'm out of office next week with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the board about the migration plan",
+    "completion": "Agenda — the migration plan. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the board."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the operations group about the travel arrangements",
+    "completion": "Hi the operations group, thanks for the invite to discuss the travel arrangements. Unfortunately I have a conflict by end of week. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the finance department about onboarding",
+    "completion": "Minutes — onboarding. Attendees: the finance department. Key points discussed and decisions recorded; action items assigned with owners and due Monday morning. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the new hires for the contract renewal",
+    "completion": "Hi the new hires, could you please review and approve the contract renewal? I've attached the details — approval by early next week would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the vendor for help with the team lunch",
+    "completion": "Hi the vendor, thank you so much for your help with the team lunch. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to Jordan on the offsite",
+    "completion": "Hi Jordan, quick status on the offsite: we're on track, key milestones met, and next steps lined up for tomorrow afternoon. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to Dana to reschedule our meeting about the hiring plan",
+    "completion": "Hi Dana, I need to reschedule our meeting about the hiring plan. Would this Friday work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Write a reminder to submit the report on the org chart update",
+    "completion": "Reminder: the report on the org chart update is due by close of business. Please submit it via the shared folder and let me know if you hit any blockers. Thanks!"
+  },
+  {
+    "input": "Draft an email to the leadership team confirming our appointment about the expense policy",
+    "completion": "Hi the leadership team, confirming our appointment about the expense policy for before the end of the month. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Compose a brief announcement to the team about the compliance training",
+    "completion": "Team — a quick note about the compliance training. Here's what's changing and what it means for you, effective by end of week. Reach out with any questions. Thanks!"
+  },
+  {
+    "input": "Write an email requesting documents from the engineering team for the procurement request",
+    "completion": "Hi the engineering team, could you please send over the documents for the procurement request when you get a chance? I'd need them by Monday morning to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 1-hour meeting with the support team about the product launch",
+    "completion": "Hi the support team, could we set up a 1-hour meeting to discuss the product launch? I'm free early next week — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to the marketing team about the deadline for the invoice",
+    "completion": "Hi the marketing team, a friendly reminder that the invoice is due next Tuesday at 10am. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to Priya after our meeting about the website redesign",
+    "completion": "Hi Priya, thanks for your time discussing the website redesign. To recap, we agreed on the next steps and I'll circle back tomorrow afternoon. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for the week of the 14th",
+    "completion": "Thanks for your email. I'm out of office the week of the 14th with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with HR about the project timeline",
+    "completion": "Agenda — the project timeline. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: HR."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the board about the quarterly budget",
+    "completion": "Hi the board, thanks for the invite to discuss the quarterly budget. Unfortunately I have a conflict before the end of the month. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the operations group about performance reviews",
+    "completion": "Minutes — performance reviews. Attendees: the operations group. Key points discussed and decisions recorded; action items assigned with owners and due by end of week. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the finance department for the security review",
+    "completion": "Hi the finance department, could you please review and approve the security review? I've attached the details — approval by Monday morning would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the new hires for help with the Q3 roadmap",
+    "completion": "Hi the new hires, thank you so much for your help with the Q3 roadmap. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to the vendor on the migration plan",
+    "completion": "Hi the vendor, quick status on the migration plan: we're on track, key milestones met, and next steps lined up for next Tuesday at 10am. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to Jordan to reschedule our meeting about the travel arrangements",
+    "completion": "Hi Jordan, I need to reschedule our meeting about the travel arrangements. Would tomorrow afternoon work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Write a reminder to submit the report on onboarding",
+    "completion": "Reminder: the report on onboarding is due this Friday. Please submit it via the shared folder and let me know if you hit any blockers. Thanks!"
+  },
+  {
+    "input": "Draft an email to Alex confirming our appointment about the contract renewal",
+    "completion": "Hi Alex, confirming our appointment about the contract renewal for by close of business. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Compose a brief announcement to the team about the team lunch",
+    "completion": "Team — a quick note about the team lunch. Here's what's changing and what it means for you, effective before the end of the month. Reach out with any questions. Thanks!"
+  },
+  {
+    "input": "Write an email requesting documents from the client for the offsite",
+    "completion": "Hi the client, could you please send over the documents for the offsite when you get a chance? I'd need them by by end of week to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 45-minute meeting with the engineering team about the hiring plan",
+    "completion": "Hi the engineering team, could we set up a 45-minute meeting to discuss the hiring plan? I'm free Monday morning — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to the support team about the deadline for the org chart update",
+    "completion": "Hi the support team, a friendly reminder that the org chart update is due early next week. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to the marketing team after our meeting about the expense policy",
+    "completion": "Hi the marketing team, thanks for your time discussing the expense policy. To recap, we agreed on the next steps and I'll circle back next Tuesday at 10am. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for June 16–20",
+    "completion": "Thanks for your email. I'm out of office June 16–20 with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with Sam about the procurement request",
+    "completion": "Agenda — the procurement request. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: Sam."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from HR about the product launch",
+    "completion": "Hi HR, thanks for the invite to discuss the product launch. Unfortunately I have a conflict by close of business. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the board about the invoice",
+    "completion": "Minutes — the invoice. Attendees: the board. Key points discussed and decisions recorded; action items assigned with owners and due before the end of the month. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the operations group for the website redesign",
+    "completion": "Hi the operations group, could you please review and approve the website redesign? I've attached the details — approval by by end of week would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the finance department for help with the audit",
+    "completion": "Hi the finance department, thank you so much for your help with the audit. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to the new hires on the project timeline",
+    "completion": "Hi the new hires, quick status on the project timeline: we're on track, key milestones met, and next steps lined up for early next week. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to the vendor to reschedule our meeting about the quarterly budget",
+    "completion": "Hi the vendor, I need to reschedule our meeting about the quarterly budget. Would next Tuesday at 10am work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Write a reminder to submit the report on performance reviews",
+    "completion": "Reminder: the report on performance reviews is due tomorrow afternoon. Please submit it via the shared folder and let me know if you hit any blockers. Thanks!"
+  },
+  {
+    "input": "Draft an email to Dana confirming our appointment about the security review",
+    "completion": "Hi Dana, confirming our appointment about the security review for this Friday. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Compose a brief announcement to the team about the Q3 roadmap",
+    "completion": "Team — a quick note about the Q3 roadmap. Here's what's changing and what it means for you, effective by close of business. Reach out with any questions. Thanks!"
+  },
+  {
+    "input": "Write an email requesting documents from the leadership team for the migration plan",
+    "completion": "Hi the leadership team, could you please send over the documents for the migration plan when you get a chance? I'd need them by before the end of the month to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 15-minute meeting with the client about the travel arrangements",
+    "completion": "Hi the client, could we set up a 15-minute meeting to discuss the travel arrangements? I'm free by end of week — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to the engineering team about the deadline for onboarding",
+    "completion": "Hi the engineering team, a friendly reminder that onboarding is due Monday morning. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to the support team after our meeting about the contract renewal",
+    "completion": "Hi the support team, thanks for your time discussing the contract renewal. To recap, we agreed on the next steps and I'll circle back early next week. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for the holiday period",
+    "completion": "Thanks for your email. I'm out of office the holiday period with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with Priya about the offsite",
+    "completion": "Agenda — the offsite. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: Priya."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from Sam about the hiring plan",
+    "completion": "Hi Sam, thanks for the invite to discuss the hiring plan. Unfortunately I have a conflict this Friday. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with HR about the org chart update",
+    "completion": "Minutes — the org chart update. Attendees: HR. Key points discussed and decisions recorded; action items assigned with owners and due by close of business. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the board for the expense policy",
+    "completion": "Hi the board, could you please review and approve the expense policy? I've attached the details — approval by before the end of the month would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the operations group for help with the compliance training",
+    "completion": "Hi the operations group, thank you so much for your help with the compliance training. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to the finance department on the procurement request",
+    "completion": "Hi the finance department, quick status on the procurement request: we're on track, key milestones met, and next steps lined up for Monday morning. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to the new hires to reschedule our meeting about the product launch",
+    "completion": "Hi the new hires, I need to reschedule our meeting about the product launch. Would early next week work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Write a reminder to submit the report on the invoice",
+    "completion": "Reminder: the report on the invoice is due next Tuesday at 10am. Please submit it via the shared folder and let me know if you hit any blockers. Thanks!"
+  },
+  {
+    "input": "Draft an email to Jordan confirming our appointment about the website redesign",
+    "completion": "Hi Jordan, confirming our appointment about the website redesign for tomorrow afternoon. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Compose a brief announcement to the team about the audit",
+    "completion": "Team — a quick note about the audit. Here's what's changing and what it means for you, effective this Friday. Reach out with any questions. Thanks!"
+  },
+  {
+    "input": "Write an email requesting documents from Alex for the project timeline",
+    "completion": "Hi Alex, could you please send over the documents for the project timeline when you get a chance? I'd need them by by close of business to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 30-minute meeting with the leadership team about the quarterly budget",
+    "completion": "Hi the leadership team, could we set up a 30-minute meeting to discuss the quarterly budget? I'm free before the end of the month — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to the client about the deadline for performance reviews",
+    "completion": "Hi the client, a friendly reminder that performance reviews is due by end of week. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to the engineering team after our meeting about the security review",
+    "completion": "Hi the engineering team, thanks for your time discussing the security review. To recap, we agreed on the next steps and I'll circle back Monday morning. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for the next two weeks",
+    "completion": "Thanks for your email. I'm out of office the next two weeks with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the marketing team about the migration plan",
+    "completion": "Agenda — the migration plan. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the marketing team."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from Priya about the travel arrangements",
+    "completion": "Hi Priya, thanks for the invite to discuss the travel arrangements. Unfortunately I have a conflict tomorrow afternoon. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with Sam about onboarding",
+    "completion": "Minutes — onboarding. Attendees: Sam. Key points discussed and decisions recorded; action items assigned with owners and due this Friday. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from HR for the contract renewal",
+    "completion": "Hi HR, could you please review and approve the contract renewal? I've attached the details — approval by by close of business would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the board for help with the team lunch",
+    "completion": "Hi the board, thank you so much for your help with the team lunch. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to the operations group on the offsite",
+    "completion": "Hi the operations group, quick status on the offsite: we're on track, key milestones met, and next steps lined up for by end of week. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to the finance department to reschedule our meeting about the hiring plan",
+    "completion": "Hi the finance department, I need to reschedule our meeting about the hiring plan. Would Monday morning work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Draft an email to the vendor confirming our appointment about the expense policy",
+    "completion": "Hi the vendor, confirming our appointment about the expense policy for next Tuesday at 10am. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Write an email requesting documents from Dana for the procurement request",
+    "completion": "Hi Dana, could you please send over the documents for the procurement request when you get a chance? I'd need them by this Friday to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 1-hour meeting with Alex about the product launch",
+    "completion": "Hi Alex, could we set up a 1-hour meeting to discuss the product launch? I'm free by close of business — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to the leadership team about the deadline for the invoice",
+    "completion": "Hi the leadership team, a friendly reminder that the invoice is due before the end of the month. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to the client after our meeting about the website redesign",
+    "completion": "Hi the client, thanks for your time discussing the website redesign. To recap, we agreed on the next steps and I'll circle back by end of week. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for Thursday and Friday",
+    "completion": "Thanks for your email. I'm out of office Thursday and Friday with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the support team about the project timeline",
+    "completion": "Agenda — the project timeline. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the support team."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the marketing team about the quarterly budget",
+    "completion": "Hi the marketing team, thanks for the invite to discuss the quarterly budget. Unfortunately I have a conflict next Tuesday at 10am. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with Priya about performance reviews",
+    "completion": "Minutes — performance reviews. Attendees: Priya. Key points discussed and decisions recorded; action items assigned with owners and due tomorrow afternoon. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from Sam for the security review",
+    "completion": "Hi Sam, could you please review and approve the security review? I've attached the details — approval by this Friday would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to HR for help with the Q3 roadmap",
+    "completion": "Hi HR, thank you so much for your help with the Q3 roadmap. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to the board on the migration plan",
+    "completion": "Hi the board, quick status on the migration plan: we're on track, key milestones met, and next steps lined up for before the end of the month. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to the operations group to reschedule our meeting about the travel arrangements",
+    "completion": "Hi the operations group, I need to reschedule our meeting about the travel arrangements. Would by end of week work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Draft an email to the new hires confirming our appointment about the contract renewal",
+    "completion": "Hi the new hires, confirming our appointment about the contract renewal for early next week. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Write an email requesting documents from Jordan for the offsite",
+    "completion": "Hi Jordan, could you please send over the documents for the offsite when you get a chance? I'd need them by tomorrow afternoon to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 45-minute meeting with Dana about the hiring plan",
+    "completion": "Hi Dana, could we set up a 45-minute meeting to discuss the hiring plan? I'm free this Friday — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to Alex about the deadline for the org chart update",
+    "completion": "Hi Alex, a friendly reminder that the org chart update is due by close of business. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to the leadership team after our meeting about the expense policy",
+    "completion": "Hi the leadership team, thanks for your time discussing the expense policy. To recap, we agreed on the next steps and I'll circle back before the end of the month. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for the rest of this week",
+    "completion": "Thanks for your email. I'm out of office the rest of this week with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the engineering team about the procurement request",
+    "completion": "Agenda — the procurement request. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the engineering team."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the support team about the product launch",
+    "completion": "Hi the support team, thanks for the invite to discuss the product launch. Unfortunately I have a conflict early next week. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the marketing team about the invoice",
+    "completion": "Minutes — the invoice. Attendees: the marketing team. Key points discussed and decisions recorded; action items assigned with owners and due next Tuesday at 10am. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from Priya for the website redesign",
+    "completion": "Hi Priya, could you please review and approve the website redesign? I've attached the details — approval by tomorrow afternoon would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to Sam for help with the audit",
+    "completion": "Hi Sam, thank you so much for your help with the audit. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to HR on the project timeline",
+    "completion": "Hi HR, quick status on the project timeline: we're on track, key milestones met, and next steps lined up for by close of business. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to the board to reschedule our meeting about the quarterly budget",
+    "completion": "Hi the board, I need to reschedule our meeting about the quarterly budget. Would before the end of the month work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Draft an email to the finance department confirming our appointment about the security review",
+    "completion": "Hi the finance department, confirming our appointment about the security review for Monday morning. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Write an email requesting documents from the vendor for the migration plan",
+    "completion": "Hi the vendor, could you please send over the documents for the migration plan when you get a chance? I'd need them by next Tuesday at 10am to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 15-minute meeting with Jordan about the travel arrangements",
+    "completion": "Hi Jordan, could we set up a 15-minute meeting to discuss the travel arrangements? I'm free tomorrow afternoon — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to Dana about the deadline for onboarding",
+    "completion": "Hi Dana, a friendly reminder that onboarding is due this Friday. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to Alex after our meeting about the contract renewal",
+    "completion": "Hi Alex, thanks for your time discussing the contract renewal. To recap, we agreed on the next steps and I'll circle back by close of business. Reach out if I missed anything."
+  },
+  {
+    "input": "Compose an out-of-office reply for the upcoming long weekend",
+    "completion": "Thanks for your email. I'm out of office the upcoming long weekend with limited access to messages. For urgent matters please contact my colleague, and I'll respond when I return."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the client about the offsite",
+    "completion": "Agenda — the offsite. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the client."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the engineering team about the hiring plan",
+    "completion": "Hi the engineering team, thanks for the invite to discuss the hiring plan. Unfortunately I have a conflict Monday morning. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the support team about the org chart update",
+    "completion": "Minutes — the org chart update. Attendees: the support team. Key points discussed and decisions recorded; action items assigned with owners and due early next week. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the marketing team for the expense policy",
+    "completion": "Hi the marketing team, could you please review and approve the expense policy? I've attached the details — approval by next Tuesday at 10am would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to Priya for help with the compliance training",
+    "completion": "Hi Priya, thank you so much for your help with the compliance training. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to Sam on the procurement request",
+    "completion": "Hi Sam, quick status on the procurement request: we're on track, key milestones met, and next steps lined up for this Friday. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to HR to reschedule our meeting about the product launch",
+    "completion": "Hi HR, I need to reschedule our meeting about the product launch. Would by close of business work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Draft an email to the operations group confirming our appointment about the website redesign",
+    "completion": "Hi the operations group, confirming our appointment about the website redesign for by end of week. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Write an email requesting documents from the new hires for the project timeline",
+    "completion": "Hi the new hires, could you please send over the documents for the project timeline when you get a chance? I'd need them by early next week to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 30-minute meeting with the vendor about the quarterly budget",
+    "completion": "Hi the vendor, could we set up a 30-minute meeting to discuss the quarterly budget? I'm free next Tuesday at 10am — let me know what works and I'll send a calendar invite."
+  },
+  {
+    "input": "Draft a reminder email to Jordan about the deadline for performance reviews",
+    "completion": "Hi Jordan, a friendly reminder that performance reviews is due tomorrow afternoon. Please let me know if you need anything to wrap it up on time. Thanks!"
+  },
+  {
+    "input": "Write a follow-up email to Dana after our meeting about the security review",
+    "completion": "Hi Dana, thanks for your time discussing the security review. To recap, we agreed on the next steps and I'll circle back this Friday. Reach out if I missed anything."
+  },
+  {
+    "input": "Draft an agenda for the meeting with the leadership team about the migration plan",
+    "completion": "Agenda — the migration plan. 1) Welcome and objectives 2) Status update 3) Open issues and decisions 4) Next steps and owners 5) AOB. Attendees: the leadership team."
+  },
+  {
+    "input": "Write a polite decline to a meeting invite from the client about the travel arrangements",
+    "completion": "Hi the client, thanks for the invite to discuss the travel arrangements. Unfortunately I have a conflict by end of week. Could we find another time, or I'm happy to share notes async?"
+  },
+  {
+    "input": "Draft meeting minutes for the discussion with the engineering team about onboarding",
+    "completion": "Minutes — onboarding. Attendees: the engineering team. Key points discussed and decisions recorded; action items assigned with owners and due Monday morning. Next meeting TBD."
+  },
+  {
+    "input": "Request approval from the support team for the contract renewal",
+    "completion": "Hi the support team, could you please review and approve the contract renewal? I've attached the details — approval by early next week would keep us on schedule. Thank you!"
+  },
+  {
+    "input": "Write a thank-you note to the marketing team for help with the team lunch",
+    "completion": "Hi the marketing team, thank you so much for your help with the team lunch. It made a real difference and I appreciate you taking the time. Best regards."
+  },
+  {
+    "input": "Draft a status update to Priya on the offsite",
+    "completion": "Hi Priya, quick status on the offsite: we're on track, key milestones met, and next steps lined up for tomorrow afternoon. I'll flag early if anything changes. Thanks!"
+  },
+  {
+    "input": "Write an email to Sam to reschedule our meeting about the hiring plan",
+    "completion": "Hi Sam, I need to reschedule our meeting about the hiring plan. Would this Friday work instead? Apologies for any inconvenience and thanks for your flexibility."
+  },
+  {
+    "input": "Draft an email to the board confirming our appointment about the expense policy",
+    "completion": "Hi the board, confirming our appointment about the expense policy for before the end of the month. Please let me know if you need to make any changes. Looking forward to it!"
+  },
+  {
+    "input": "Write an email requesting documents from the finance department for the procurement request",
+    "completion": "Hi the finance department, could you please send over the documents for the procurement request when you get a chance? I'd need them by Monday morning to keep things moving. Thanks so much!"
+  },
+  {
+    "input": "Schedule a 1-hour meeting with the new hires about the product launch",
+    "completion": "Hi the new hires, could we set up a 1-hour meeting to discuss the product launch? I'm free early next week — let me know what works and I'll send a calendar invite."
+  }
+]

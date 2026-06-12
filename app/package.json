@@ -7,7 +7,8 @@
   "scripts": {
     "build:js": "esbuild src/index.ts --bundle --outfile=dist/index.js --format=esm --platform=browser --target=es2022 --external:fermyon:* --external:spin:* --external:wasi:*",
     "build:wasm": "mkdir -p target && j2w -i dist/index.js -o target/few-shot.wasm --trigger-type spin3-http",
-    "build": "npm run build:js && npm run build:wasm",
+    "check:frontend": "node scripts/check-frontend.mjs",
+    "build": "npm run check:frontend && npm run build:js && npm run build:wasm",
     "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
