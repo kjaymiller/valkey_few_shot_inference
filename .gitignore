@@ -20,3 +20,7 @@ mise.local.toml
 # Local env
 .env
 *.log
+
+# fnox secret config — never commit
+fnox.toml
+**/fnox.toml
