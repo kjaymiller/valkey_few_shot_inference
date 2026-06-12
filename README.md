@@ -1,10 +1,20 @@
 # Few-Shot Inference with Spin + Aiven for Valkey
 
-An AI-forward demo: a [Fermyon Spin](https://www.fermyon.com/spin) WebAssembly
-component embeds each incoming prompt, queries **Aiven for Valkey** for the 3
-most similar *past successful* inferences using vector search, and injects them
-as **few-shot examples** before calling the inference
-engine. The system gets better at a task the more good examples it accumulates.
+An AI-forward demo built on a [Fermyon Spin](https://www.fermyon.com/spin)
+WebAssembly component and **Aiven for Valkey** vector search. It combines two
+independent capabilities, both powered by the same embedding + HNSW machinery:
+
+1. **Few-shot retrieval** — embed each incoming prompt, find the 3 most similar
+   *past successful* inferences, and inject them as few-shot examples before
+   calling the inference engine. The system gets better at a task the more good
+   examples it accumulates.
+2. **Semantic response caching** — before calling the (slow) inference engine,
+   check whether a semantically similar request has already been answered and,
+   if so, return the cached completion instantly. See
+   [Semantic response caching](#semantic-response-caching).
+
+These are orthogonal: few-shot improves answer *quality*; caching improves
+*latency and cost* on repeat questions. Each uses its own Valkey index.
 
 ```mermaid
 flowchart TD
@@ -16,18 +26,24 @@ flowchart TD
 
     subgraph spin["Spin component (Wasm)"]
         embed["1. embed input<br/>all-minilm-l6-v2 to 384-d vector"]
-        search["2. FT.SEARCH KNN 3"]
-        prompt["3. build prompt with retrieved examples"]
+        cache["2. cache lookup<br/>KNN idx:cache (scoped to examples)"]
+        search["3. FT.SEARCH KNN 3<br/>idx:examples"]
+        prompt["4. build prompt with retrieved examples"]
+        store["store completion in idx:cache"]
         fb_embed["embed + HSET into example bank"]
     end
 
     infer --> embed
-    embed --> search
+    embed --> cache
+    cache -->|hit| completion
+    cache -->|miss| search
     search -->|vector search| valkey
     valkey -->|retrieved examples| prompt
     embed -.-> prompt
-    prompt -->|"4. HTTP generate"| ollama
-    ollama -->|generated text| completion
+    prompt -->|"5. HTTP generate"| ollama
+    ollama -->|generated text| store
+    store --> completion
+    cache <-->|KNN / write| valkey
 
     feedback --> fb_embed
     fb_embed -->|write back| valkey
@@ -38,7 +54,7 @@ flowchart TD
 | Path | What |
 |------|------|
 | `infra/` | OpenTofu config that provisions Aiven for Valkey with the `valkey-search` capability. |
-| `app/`   | Spin TypeScript HTTP component (`/infer`, `/feedback`, `/health`). |
+| `app/`   | Spin TypeScript HTTP component (`/infer`, `/infer/stream`, `/feedback`, `/cache/clear`, `/stats`, `/health`, and a test UI at `/`). |
 | `app/scripts/seed.mjs` | Seeds the example bank with sample successful inferences. |
 
 ## Prerequisites
@@ -147,7 +163,7 @@ curl -s http://127.0.0.1:3000/feedback \
 cd infra && tofu destroy
 ```
 
-## How the vector search works
+## How few-shot retrieval works
 
 - **Embeddings**: Spin's built-in `all-minilm-l6-v2` serverless model produces
   384-dimensional vectors — no external embedding API.
@@ -158,3 +174,61 @@ cd infra && tofu destroy
   similarity score for display.
 - Vectors are stored as little-endian `FLOAT32` byte buffers in the
   `embedding` hash field, matching what `valkey-search` expects.
+
+## Semantic response caching
+
+Generating a completion is the slow, expensive part of a request. The app keeps
+a **semantic cache** of past completions so that a repeat — or near-repeat —
+question is answered from Valkey instead of the inference engine.
+
+On every `/infer` (and `/infer/stream`), before calling the model the app:
+
+1. Embeds the input (the same vector it already needs for few-shot retrieval).
+2. Runs a KNN search against a **separate** cache index, `idx:cache`.
+3. If the nearest entry's cosine similarity is at least `cache_threshold`
+   **and** it was generated from the same retrieved examples, the stored
+   completion is returned immediately (0 inference tokens).
+4. On a miss, the model is called as usual and the result is written into
+   `idx:cache` with a TTL.
+
+The cache index is kept separate from `idx:examples` so cached raw answers never
+leak into few-shot retrieval. Entries are keyed on input content **plus** a
+fingerprint of the retrieved examples, so changing the example bank can't serve
+a completion that was grounded in different context.
+
+```bash
+# First call: miss -> generates and caches.
+curl -s http://127.0.0.1:3000/infer \
+  -H 'content-type: application/json' \
+  -d '{"input":"Draft a reminder about the budget deadline"}' | jq '.cached, .usage'
+# false ... real token counts
+
+# Same question again: hit -> instant, no tokens.
+curl -s http://127.0.0.1:3000/infer \
+  -H 'content-type: application/json' \
+  -d '{"input":"Draft a reminder about the budget deadline"}' | jq '.cached, .cacheSimilarity'
+# true 1
+```
+
+Cache controls:
+
+- **Bypass** a single request with `{"input":"…","noCache":true}` (the lookup is
+  skipped, but the fresh result is still cached).
+- **Clear** the whole cache with `curl -X POST http://127.0.0.1:3000/cache/clear`
+  — the example bank is untouched.
+- **`/stats`** reports both `exampleCount` and `cacheCount`.
+
+### Tuning
+
+Two Spin variables control caching (see `spin.toml`):
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `cache_threshold` | `0.95` | Minimum cosine similarity for a hit. `1.0` = exact match only; lower is more aggressive (more hits, looser matches). |
+| `cache_ttl_seconds` | `3600` | How long a cached completion lives. `0` disables expiry. |
+
+> [!NOTE]
+> Because entries are scoped to the retrieved examples, a dense example bank
+> makes the cache hit mainly on near-exact repeats: a small wording change can
+> shift which examples are retrieved and miss the cache. Raise `cache_threshold`
+> toward `1.0` for stricter reuse, or lower it for more aggressive matching.
