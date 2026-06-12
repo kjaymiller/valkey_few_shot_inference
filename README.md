@@ -39,7 +39,8 @@ These versions are pinned in `mise.toml`. Optionally, if you use
 mise install        # installs node 22, opentofu 1.x, fermyon spin 3.x
 ```
 
-> Heads-up: mise's registry `spin` is the *Spinnaker* CLI. This repo pins
+> [!NOTE]
+> mise's registry `spin` is the *Spinnaker* CLI. This repo pins
 > `github:fermyon/spin` (the WebAssembly runtime) to avoid the name clash.
 
 You also need an [Aiven account](https://console.aiven.io) + API token
