@@ -6,5 +6,5 @@ aiven_project = "your-aiven-project-name"
 cloud_name = "akamai-us-east"
 
 # valkey-search is included on all Aiven for Valkey plans.
-valkey_plan  = "startup-4"
+valkey_plan  = "hobbyist"
 service_name = "few-shot-valkey"

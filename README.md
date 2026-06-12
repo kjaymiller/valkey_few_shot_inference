@@ -1,9 +1,9 @@
 # Few-Shot Inference with Spin + Aiven for Valkey
 
 An AI-forward demo: a [Fermyon Spin](https://www.fermyon.com/spin) WebAssembly
-component embeds each incoming prompt, queries **Aiven for Valkey** (running on
-**Akamai**) for the 3 most similar *past successful* inferences using vector
-search, and injects them as **few-shot examples** before calling the inference
+component embeds each incoming prompt, queries **Aiven for Valkey** for the 3
+most similar *past successful* inferences using vector search, and injects them
+as **few-shot examples** before calling the inference
 engine. The system gets better at a task the more good examples it accumulates.
 
 ```
@@ -20,7 +20,7 @@ engine. The system gets better at a task the more good examples it accumulates.
 
 | Path | What |
 |------|------|
-| `infra/` | OpenTofu config that provisions Aiven for Valkey on Akamai with the `valkey-search` capability. |
+| `infra/` | OpenTofu config that provisions Aiven for Valkey with the `valkey-search` capability. |
 | `app/`   | Spin TypeScript HTTP component (`/infer`, `/feedback`, `/health`). |
 | `app/scripts/seed.mjs` | Seeds the example bank with sample successful inferences. |
 
@@ -45,7 +45,7 @@ Prefer not to use mise? Install manually:
 Either way you also need an [Aiven account](https://console.aiven.io) + API
 token (`export AIVEN_TOKEN=…`).
 
-## 1. Provision Valkey on Akamai
+## 1. Provision Aiven for Valkey
 
 ```bash
 cd infra
