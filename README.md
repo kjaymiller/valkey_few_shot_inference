@@ -6,14 +6,31 @@ component embeds each incoming prompt, queries **Aiven for Valkey** (running on
 search, and injects them as **few-shot examples** before calling the inference
 engine. The system gets better at a task the more good examples it accumulates.
 
-```
-                 ┌─────────────────────────── Spin component (Wasm) ──────────────────────────┐
-  POST /infer    │  1. embed(input)  ──all-minilm-l6-v2──▶ 384-d vector                        │
-  {"input": …} ──▶  2. FT.SEARCH KNN 3  ───────────────▶  Aiven for Valkey (valkey-search/HNSW)│
-                 │  3. build prompt w/ retrieved examples                                      │
-                 │  4. Llm.infer(llama2-chat)  ──────────▶  completion                         │
-                 └────────────────────────────────────────────────────────────────────────────┘
-  POST /feedback {"input","completion"}  ──▶  embed + HSET into the example bank
+```mermaid
+flowchart TD
+    infer["POST /infer<br/>{input}"]
+    feedback["POST /feedback<br/>{input, completion}"]
+    valkey[("Aiven for Valkey<br/>valkey-search / HNSW")]
+    completion["completion"]
+
+    subgraph spin["Spin component (Wasm)"]
+        embed["1. embed input<br/>all-minilm-l6-v2 to 384-d vector"]
+        search["2. FT.SEARCH KNN 3"]
+        prompt["3. build prompt with retrieved examples"]
+        llm["4. Llm.infer llama2-chat"]
+        fb_embed["embed + HSET into example bank"]
+    end
+
+    infer --> embed
+    embed --> search
+    search -->|vector search| valkey
+    valkey -->|retrieved examples| prompt
+    embed -.-> prompt
+    prompt --> llm
+    llm --> completion
+
+    feedback --> fb_embed
+    fb_embed -->|write back| valkey
 ```
 
 ## Layout
