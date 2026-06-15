@@ -1,13 +1,3 @@
-# Builds the few-shot Spin component to Wasm and serves it.
-# Env vars (valkey_url, inference_api_url, chat_model, inference_api_key, ...)
-# are NOT baked in — pass them at runtime as SPIN_VARIABLE_<name>, e.g.:
-#   docker run -p 3000:3000 \
-#     -e SPIN_VARIABLE_VALKEY_URL="rediss://..." \
-#     -e SPIN_VARIABLE_INFERENCE_API_URL="https://api.openai.com/v1/chat/completions" \
-#     -e SPIN_VARIABLE_CHAT_MODEL="gpt-4o" \
-#     -e SPIN_VARIABLE_INFERENCE_API_KEY="sk-..." \
-#     few-shot-inference
-
 FROM node:22-bookworm
 
 # Fermyon Spin CLI (v3, matching mise.toml). The installer drops the binary in
@@ -16,9 +6,9 @@ FROM node:22-bookworm
 # into the download URL, so a bare "v3" 404s.
 ARG SPIN_VERSION=v3.6.3
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash -s -- -v ${SPIN_VERSION} \
-    && mv ./spin /usr/local/bin/spin
+  && rm -rf /var/lib/apt/lists/* \
+  && curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash -s -- -v ${SPIN_VERSION} \
+  && mv ./spin /usr/local/bin/spin
 
 WORKDIR /app
 
@@ -36,11 +26,11 @@ EXPOSE 3000
 # placeholders, not real config — override every one at `docker run` time with
 # -e SPIN_VARIABLE_<NAME>="...". Note: an ENV set here overrides the spin.toml
 # default, so vars with meaningful defaults are seeded with that same default.
-ENV SPIN_VARIABLE_VALKEY_URL="rediss://CHANGEME" \
-    SPIN_VARIABLE_INFERENCE_API_URL="http://localhost:11434/v1/chat/completions" \
-    SPIN_VARIABLE_CHAT_MODEL="gpt-oss:20b" \
-    SPIN_VARIABLE_INFERENCE_API_KEY="" \
-    SPIN_VARIABLE_CACHE_THRESHOLD="0.95" \
-    SPIN_VARIABLE_CACHE_TTL_SECONDS="3600"
+ENV SPIN_VARIABLE_VALKEY_URL="rediss://CHANGEME"
+ENV SPIN_VARIABLE_INFERENCE_API_URL="http://localhost:11434/v1/chat/completions"
+ENV   SPIN_VARIABLE_CHAT_MODEL="gpt-oss:20b"
+ENV  SPIN_VARIABLE_INFERENCE_API_KEY=""
+ENV  SPIN_VARIABLE_CACHE_THRESHOLD="0.95"
+ENV  SPIN_VARIABLE_CACHE_TTL_SECONDS="3600"
 
 CMD ["spin", "up", "--listen", "0.0.0.0:3000"]
