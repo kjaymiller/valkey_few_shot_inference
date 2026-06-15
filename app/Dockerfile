@@ -26,11 +26,16 @@ EXPOSE 3000
 # placeholders, not real config — override every one at `docker run` time with
 # -e SPIN_VARIABLE_<NAME>="...". Note: an ENV set here overrides the spin.toml
 # default, so vars with meaningful defaults are seeded with that same default.
+# These are placeholders and not actual values
 ENV SPIN_VARIABLE_VALKEY_URL="rediss://CHANGEME"
 ENV SPIN_VARIABLE_INFERENCE_API_URL="http://localhost:11434/v1/chat/completions"
-ENV   SPIN_VARIABLE_CHAT_MODEL="gpt-oss:20b"
-ENV  SPIN_VARIABLE_INFERENCE_API_KEY=""
-ENV  SPIN_VARIABLE_CACHE_THRESHOLD="0.95"
-ENV  SPIN_VARIABLE_CACHE_TTL_SECONDS="3600"
+ENV SPIN_VARIABLE_CHAT_MODEL="gpt-oss:20b"
+ENV SPIN_VARIABLE_INFERENCE_API_KEY=""
+ENV SPIN_VARIABLE_CACHE_THRESHOLD="0.95"
+ENV SPIN_VARIABLE_CACHE_TTL_SECONDS="3600"
 
-CMD ["spin", "up", "--listen", "0.0.0.0:3000"]
+# --log-dir "" disables Spin's default file logging (.spin/logs/) so component
+# stdout/stderr go straight to the container's stdout/stderr, where `docker logs`
+# and the deploy platform can capture them. Without this, component errors are
+# written to files inside the container and are invisible on a deployed instance.
+CMD ["spin", "up", "--log-dir", "", "--listen", "0.0.0.0:3000"]
