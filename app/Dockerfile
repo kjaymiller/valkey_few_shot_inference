@@ -31,8 +31,8 @@ ENV SPIN_VARIABLE_VALKEY_URL="rediss://CHANGEME"
 ENV SPIN_VARIABLE_INFERENCE_API_URL="http://localhost:11434/v1/chat/completions"
 ENV SPIN_VARIABLE_CHAT_MODEL="gpt-oss:20b"
 ENV SPIN_VARIABLE_INFERENCE_API_KEY=""
-ENV SPIN_VARIABLE_CACHE_THRESHOLD="0.95"
-ENV SPIN_VARIABLE_CACHE_TTL_SECONDS="3600"
+ENV SPIN_VARIABLE_CACHE_THRESHOLD=0.95
+ENV SPIN_VARIABLE_CACHE_TTL_SECONDS=3600
 
 # --log-dir "" disables Spin's default file logging (.spin/logs/) so component
 # stdout/stderr go straight to the container's stdout/stderr, where `docker logs`

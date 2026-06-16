@@ -56,6 +56,7 @@ flowchart TD
 | `infra/` | OpenTofu config that provisions Aiven for Valkey with the `valkey-search` capability. |
 | `app/`   | Spin TypeScript HTTP component (`/infer`, `/infer/stream`, `/feedback`, `/cache/clear`, `/stats`, `/health`, and a test UI at `/`). |
 | `app/scripts/seed.mjs` | Seeds the example bank with sample successful inferences. |
+| `app/scripts/seed-routes.mjs` | Seeds the semantic router with labeled exemplar utterances (`routes.json`). |
 
 ## Prerequisites
 
@@ -118,6 +119,7 @@ export VALKEY_URL=$(mise run valkey-url)
 mise run build                         # npm install + spin build (in app/)
 mise run up                            # spin up with valkey_url wired in
 mise run seed                          # seed the example bank
+mise run seed-routes                   # seed the semantic router exemplars
 mise run infra-down                    # tofu destroy
 ```
 
@@ -157,6 +159,16 @@ curl -s http://127.0.0.1:3000/feedback \
   -d '{"input":"…","completion":"…"}'
 ```
 
+Pass an optional `route` to **also** teach the semantic router: the same input
+becomes a labeled exemplar for that intent, so the example bank and the router
+grow together. Omit it and only the example bank grows (routing untouched).
+
+```bash
+curl -s http://127.0.0.1:3000/feedback \
+  -H 'content-type: application/json' \
+  -d '{"input":"…","completion":"…","route":"out-of-office"}'
+```
+
 ## Teardown
 
 ```bash
@@ -174,6 +186,52 @@ cd infra && tofu destroy
   similarity score for display.
 - Vectors are stored as little-endian `FLOAT32` byte buffers in the
   `embedding` hash field, matching what `valkey-search` expects.
+
+## Semantic routing
+
+Before completing a request the app **classifies its intent** and picks a
+tailored system prompt for it. This reuses the exact machinery few-shot
+retrieval already needs — the input is embedded once, then KNN-searched against
+a third index, `idx:routes`, holding a handful of labeled exemplar utterances
+per intent (see `app/scripts/routes.json`). The nearest exemplar's label becomes
+the route.
+
+The 15 routes are derived from the shape of the seed data itself — each is one
+of the administrative task templates in the example bank (`schedule-meeting`,
+`out-of-office`, `meeting-minutes`, `request-approval`, …). Each route maps to a
+short, intent-specific system prompt in `src/index.ts` (`ROUTE_PROMPTS`).
+
+```bash
+APP_URL=http://127.0.0.1:3000 npm run seed:routes   # load routes.json
+
+curl -s http://127.0.0.1:3000/infer \
+  -H 'content-type: application/json' \
+  -d '{"input":"Set up an away message while I am on leave next week"}' \
+  | jq '.route, .routeSimilarity, .routeMatched'
+# "out-of-office"  0.71  true
+```
+
+If the nearest exemplar's cosine similarity is below `route_threshold` (default
+`0.6`), the input doesn't clearly match any known intent and the app falls back
+to the `general` route — visible as `routeMatched: false`. This gives a free
+confidence signal: type something off-topic and watch it land on the fallback
+instead of being force-fit to a specialist prompt.
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `route_threshold` | `0.6` | Minimum cosine similarity to the nearest exemplar to assign that intent. Higher = stricter routing; lower = more inputs pulled onto a specialist prompt. |
+
+Routing, few-shot retrieval, and caching are independent layers over the same
+embedding: routing picks *how to ask*, few-shot picks *what to show*, caching
+decides *whether to ask at all*. `/stats` reports `routeCount` alongside
+`exampleCount` and `cacheCount`, and the test UI shows the chosen route (or the
+fallback) above each completion.
+
+The router learns the same way the example bank does. The UI's promote control
+has a **teach route** picker (pre-set to the route that was just matched), and
+`POST /feedback` accepts an optional `route` — so adding a good example can, in
+the same step, add it as a routing exemplar. New intents are picked up without
+re-running `seed:routes`.
 
 ## Semantic response caching
 

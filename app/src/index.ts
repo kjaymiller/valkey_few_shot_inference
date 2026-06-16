@@ -38,6 +38,79 @@ const TOP_K = 3;
 const CACHE_INDEX = "idx:cache";
 const CACHE_PREFIX = "cache:";
 
+// Semantic router. A third HNSW index holding a handful of labeled exemplar
+// utterances per intent (see scripts/routes.json). On each /infer we embed the
+// input ONCE (the same vector few-shot retrieval and the cache already need),
+// KNN-search this index for the nearest exemplar, and take its `route` label.
+// That label selects a tailored system prompt so the LLM gets intent-specific
+// instructions before it ever runs. If the nearest exemplar isn't similar
+// enough (below route_threshold), we fall back to the GENERAL route.
+const ROUTE_INDEX = "idx:routes";
+const ROUTE_PREFIX = "route:";
+const GENERAL_ROUTE = "general";
+
+// Per-route system prompts. The router picks one of these by intent; the
+// default GENERAL prompt is used both for the fallback route and for any route
+// label that lacks a dedicated entry, so adding new routes.json labels never
+// breaks the lookup. Keep each instruction short — it's prepended to the
+// few-shot conversation built in buildMessages().
+const ROUTE_PROMPTS: Record<string, string> = {
+  general:
+    "You are a helpful assistant. The conversation below contains past " +
+    "requests and the responses that worked well — match their tone and " +
+    "format. Reply with only the response itself, no preamble.",
+  "schedule-meeting":
+    "You draft concise meeting requests. Propose a specific duration and time " +
+    "window, ask the recipient to confirm, and offer to send a calendar invite.",
+  "reminder-deadline":
+    "You write short, friendly deadline reminders. State what is due and when, " +
+    "and offer help if the recipient is blocked. Keep it warm, not nagging.",
+  "follow-up":
+    "You write post-meeting follow-ups. Thank the recipient, recap what was " +
+    "agreed, name the next step, and invite corrections.",
+  "out-of-office":
+    "You write out-of-office auto-replies. State the away period, point urgent " +
+    "matters to a colleague, and promise a reply on return. No greeting line.",
+  agenda:
+    "You produce tight meeting agendas: a one-line title, a short numbered list " +
+    "of items, and the attendees. No prose around the list.",
+  "decline-invite":
+    "You politely decline meeting invitations. Thank the sender, cite a " +
+    "scheduling conflict, and offer to find another time or share notes async.",
+  "meeting-minutes":
+    "You write meeting minutes: title, attendees, key points and decisions, and " +
+    "action items with owners and due dates. Be factual and compact.",
+  "request-approval":
+    "You write approval requests. Clearly state what needs review, attach or " +
+    "reference the details, and give a deadline that keeps work on schedule.",
+  "thank-you":
+    "You write brief, sincere thank-you notes. Name the specific help given and " +
+    "why it mattered. Warm and genuine, never effusive.",
+  "status-update":
+    "You write quick status updates: whether things are on track, milestones " +
+    "hit, next steps, and a promise to flag risks early. One short paragraph.",
+  reschedule:
+    "You write reschedule requests. Apologize briefly, propose a concrete " +
+    "alternative time, and thank the recipient for their flexibility.",
+  "submit-report":
+    "You write reminders to submit a report. State the report and due date, say " +
+    "where to file it, and ask the recipient to flag blockers.",
+  "confirm-appointment":
+    "You write appointment confirmations. Restate the topic and time, invite " +
+    "changes, and close on a forward-looking note.",
+  announcement:
+    "You write brief team announcements. Lead with what is changing, say what it " +
+    "means for the reader and when it takes effect, and invite questions.",
+  "request-documents":
+    "You write requests for documents. Say which documents you need, for what, " +
+    "and by when, and thank the recipient for their help.",
+};
+
+// Resolve a route label to its system prompt, defaulting to GENERAL.
+function routePrompt(route: string): string {
+  return ROUTE_PROMPTS[route] ?? ROUTE_PROMPTS[GENERAL_ROUTE];
+}
+
 // Pull the Valkey connection string from a Spin variable (see spin.toml).
 function valkeyUrl(): string {
   const url = Variables.get("valkey_url");
@@ -82,6 +155,15 @@ function cacheThreshold(): number {
 function cacheTtlSeconds(): number {
   const v = parseInt(Variables.get("cache_ttl_seconds") ?? "", 10);
   return Number.isFinite(v) && v >= 0 ? v : 3600;
+}
+
+// Minimum cosine similarity for the router to trust the nearest exemplar. Below
+// this the input doesn't clearly belong to any known intent, so we fall back to
+// the GENERAL route. Default is moderate so clear intents route and vague ones
+// don't get force-fit into a specialist prompt.
+function routeThreshold(): number {
+  const v = parseFloat(Variables.get("route_threshold") ?? "");
+  return Number.isFinite(v) ? v : 0.6;
 }
 
 // Embed a single piece of text and return its float vector.
@@ -184,6 +266,28 @@ function ensureCacheIndex(conn: ReturnType<typeof Redis.open>): void {
   }
 }
 
+// Ensure the HNSW vector index for the semantic router exists. Each entry is a
+// labeled exemplar utterance: the `route` field holds the intent label we hand
+// back, the vector lets us KNN-search for the nearest exemplar to an input.
+function ensureRouteIndex(conn: ReturnType<typeof Redis.open>): void {
+  try {
+    conn.execute("FT.CREATE", [
+      arg(ROUTE_INDEX),
+      arg("ON"), arg("HASH"),
+      arg("PREFIX"), arg("1"), arg(ROUTE_PREFIX),
+      arg("SCHEMA"),
+      arg("utterance"), arg("TEXT"),
+      arg("route"), arg("TEXT"),
+      arg("embedding"), arg("VECTOR"), arg("HNSW"), arg("6"),
+      arg("TYPE"), arg("FLOAT32"),
+      arg("DIM"), arg(String(VECTOR_DIM)),
+      arg("DISTANCE_METRIC"), arg("COSINE"),
+    ]);
+  } catch (e) {
+    ignoreAlreadyExists(e);
+  }
+}
+
 interface Example {
   prompt: string;
   completion: string;
@@ -233,6 +337,67 @@ function searchExamples(
   }
   if (current) examples.push(toExample(current));
   return examples;
+}
+
+interface RouteMatch {
+  route: string;      // the chosen intent label
+  similarity: number; // cosine similarity to the nearest exemplar (0..1)
+  matched: boolean;   // false when we fell back to GENERAL below threshold
+}
+
+// Classify an input by finding the nearest labeled exemplar in idx:routes.
+// Reuses the query vector already computed for few-shot retrieval, so routing
+// adds one KNN search and zero extra embedding calls. Returns the GENERAL route
+// (matched:false) when the index is empty or the best match is too weak.
+function pickRoute(
+  conn: ReturnType<typeof Redis.open>,
+  queryVec: number[],
+): RouteMatch {
+  let raw;
+  try {
+    raw = conn.execute("FT.SEARCH", [
+      arg(ROUTE_INDEX),
+      arg(`*=>[KNN 1 @embedding $vec AS score]`),
+      arg("PARAMS"), arg("2"), arg("vec"), bytes(floatsToBytes(queryVec)),
+      arg("RETURN"), arg("2"), arg("route"), arg("score"),
+      arg("DIALECT"), arg("2"),
+    ]);
+  } catch {
+    // Empty index or query miss — no routing info, use GENERAL.
+    return { route: GENERAL_ROUTE, similarity: 0, matched: false };
+  }
+
+  const flat = raw.map(resultToString);
+  let route: string | null = null;
+  let score = 1;
+  for (let i = 1; i < flat.length; i++) {
+    if (flat[i] === "route") route = flat[i + 1] ?? "";
+    if (flat[i] === "score") score = parseFloat(flat[i + 1] ?? "1");
+  }
+
+  const similarity = Number((1 - score).toFixed(4)); // cosine distance -> sim
+  if (!route || similarity < routeThreshold()) {
+    return { route: GENERAL_ROUTE, similarity, matched: false };
+  }
+  return { route, similarity, matched: true };
+}
+
+// Store one labeled exemplar utterance into the router index. Keyed by route +
+// utterance content so re-seeding updates in place rather than duplicating.
+function storeRoute(
+  conn: ReturnType<typeof Redis.open>,
+  route: string,
+  utterance: string,
+): string {
+  const vec = embed(utterance);
+  const id = `${ROUTE_PREFIX}${route}:${hash(utterance)}`;
+  conn.execute("HSET", [
+    arg(id),
+    arg("utterance"), arg(utterance),
+    arg("route"), arg(route),
+    arg("embedding"), bytes(floatsToBytes(vec)),
+  ]);
+  return id;
 }
 
 // Count how many examples are currently in the bank. valkey-search rejects a
@@ -377,15 +542,13 @@ interface ChatMessage {
 // as a real prior exchange: a user turn with the past request, then an assistant
 // turn with the response that worked. The model then pattern-matches on the
 // conversation shape and imitates the exemplars instead of reasoning over them.
-function buildMessages(input: string, examples: Example[]): ChatMessage[] {
+function buildMessages(
+  input: string,
+  examples: Example[],
+  systemPrompt: string = ROUTE_PROMPTS[GENERAL_ROUTE],
+): ChatMessage[] {
   const messages: ChatMessage[] = [
-    {
-      role: "system",
-      content:
-        "You are a helpful assistant. The conversation below contains past " +
-        "requests and the responses that worked well — match their tone and " +
-        "format. Reply with only the response itself, no preamble.",
-    },
+    { role: "system", content: systemPrompt },
   ];
 
   for (const ex of examples) {
@@ -505,8 +668,29 @@ router.get("/stats", () => {
   return json({
     exampleCount: countDocs(conn, INDEX_NAME),
     cacheCount: countDocs(conn, CACHE_INDEX),
+    routeCount: countDocs(conn, ROUTE_INDEX),
   });
 });
+
+// POST /routes  { "route": "...", "utterance": "..." }
+// Add one labeled exemplar to the router index. Used by scripts/seed-routes.mjs
+// to load routes.json; can also teach a new exemplar at runtime.
+router.post("/routes", async (req) => {
+  const body = (await req.json()) as { route?: string; utterance?: string };
+  const route = body?.route?.trim();
+  const utterance = body?.utterance?.trim();
+  if (!route || !utterance)
+    return json({ error: "need both 'route' and 'utterance'" }, 400);
+
+  const conn = Redis.open(valkeyUrl());
+  ensureRouteIndex(conn);
+  return json({ stored: storeRoute(conn, route, utterance) });
+});
+
+// GET /routes  -> { routes: ["schedule-meeting", ...] }
+// The known route labels (those with a dedicated system prompt). Used by the UI
+// to populate the route picker on the promote flow.
+router.get("/routes", () => json({ routes: Object.keys(ROUTE_PROMPTS) }));
 
 // POST /cache/clear  -> flush all semantic-cache entries (example bank intact)
 router.post("/cache/clear", () => {
@@ -565,13 +749,19 @@ router.post("/infer/stream", async (req) => {
         const conn = Redis.open(valkeyUrl());
         ensureIndex(conn);
         ensureCacheIndex(conn);
+        ensureRouteIndex(conn);
         const queryVec = embed(input);
+        // Route first: the chosen intent selects the system prompt below.
+        const match = pickRoute(conn, queryVec);
         const examples = searchExamples(conn, queryVec);
         const fingerprint = examplesFingerprint(examples);
 
-        // Flush the retrieved examples right away — this is the fast part.
+        // Flush the route + retrieved examples right away — the fast part.
         controller.enqueue(sse("examples", {
           input,
+          route: match.route,
+          routeSimilarity: match.similarity,
+          routeMatched: match.matched,
           fewShotExamples: examples.map((e) => ({
             prompt: e.prompt,
             similarity: Number((1 - e.score).toFixed(4)),
@@ -595,7 +785,9 @@ router.post("/infer/stream", async (req) => {
 
         // Miss: stream the LLM completion token-by-token, accumulating the full
         // text so we can write it to the cache once complete.
-        const upstream = await chatCompletionStream(buildMessages(input, examples));
+        const upstream = await chatCompletionStream(
+          buildMessages(input, examples, routePrompt(match.route)),
+        );
         const reader = upstream.body!.getReader();
         const decoder = new TextDecoder();
         let buf = "";
@@ -668,14 +860,21 @@ router.post("/infer", async (req) => {
   const conn = Redis.open(valkeyUrl());
   ensureIndex(conn);
   ensureCacheIndex(conn);
+  ensureRouteIndex(conn);
 
   const queryVec = embed(input);
+  const match = pickRoute(conn, queryVec);
   const examples = searchExamples(conn, queryVec);
   const fingerprint = examplesFingerprint(examples);
   const fewShotExamples = examples.map((e) => ({
     prompt: e.prompt,
     similarity: Number((1 - e.score).toFixed(4)), // cosine sim from distance
   }));
+  const routing = {
+    route: match.route,
+    routeSimilarity: match.similarity,
+    routeMatched: match.matched,
+  };
 
   // Cache lookup: same-ish input built from the same examples → reuse.
   if (!body?.noCache) {
@@ -685,6 +884,7 @@ router.post("/infer", async (req) => {
         input,
         completion: hit.completion,
         fewShotExamples,
+        ...routing,
         usage: { promptTokenCount: 0, generatedTokenCount: 0 },
         cached: true,
         cacheSimilarity: hit.similarity,
@@ -693,7 +893,9 @@ router.post("/infer", async (req) => {
   }
 
   try {
-    const inference = await chatCompletion(buildMessages(input, examples));
+    const inference = await chatCompletion(
+      buildMessages(input, examples, routePrompt(match.route)),
+    );
     const completion = inference.text.trim();
     if (completion) storeCache(conn, input, completion, queryVec, fingerprint);
 
@@ -701,6 +903,7 @@ router.post("/infer", async (req) => {
       input,
       completion,
       fewShotExamples,
+      ...routing,
       usage: inference.usage,
       cached: false,
     });
@@ -716,6 +919,7 @@ router.post("/feedback", async (req) => {
   const body = (await req.json()) as { input?: string; completion?: string };
   const input = body?.input?.trim();
   const completion = body?.completion?.trim();
+  const route = (body as { route?: string })?.route?.trim();
   if (!input || !completion)
     return json({ error: "need both 'input' and 'completion'" }, 400);
 
@@ -723,7 +927,16 @@ router.post("/feedback", async (req) => {
   ensureIndex(conn);
   const id = storeExample(conn, input, completion);
 
-  return json({ stored: id });
+  // Optionally also teach the router: the same input becomes a labeled exemplar
+  // for `route`, so the corpus and the router grow together. Skipped when no
+  // route is given (the example bank grows but routing is left alone).
+  let routeId: string | undefined;
+  if (route) {
+    ensureRouteIndex(conn);
+    routeId = storeRoute(conn, route, input);
+  }
+
+  return json({ stored: id, routeStored: routeId });
 });
 
 function json(obj: unknown, status = 200): Response {
@@ -796,6 +1009,14 @@ const INDEX_HTML = `<!doctype html>
     background: none; color: #3b82f6; padding: 0; margin: 0;
     font-size: .8rem; text-decoration: underline; font-weight: 400;
   }
+  .route { margin-bottom: .75rem; font-size: .85rem; }
+  .route .chip {
+    font-family: ui-monospace, monospace; font-weight: 600;
+    padding: .1rem .5rem; border-radius: 6px;
+    background: #8b5cf6; color: #fff;
+  }
+  .route .chip.fallback { background: #6b7280; }
+  .route .sim { color: #888; margin-left: .4rem; }
 </style>
 </head>
 <body>
@@ -804,7 +1025,8 @@ const INDEX_HTML = `<!doctype html>
   <p class="sub">
     Example bank: <strong id="count">…</strong> stored &middot;
     Cache: <strong id="cacheCount">…</strong> entries
-    <button id="clearCache" class="link">clear</button>
+    <button id="clearCache" class="link">clear</button> &middot;
+    Routes: <strong id="routeCount">…</strong>
   </p>
 
   <label for="input">Your request</label>
@@ -815,13 +1037,19 @@ const INDEX_HTML = `<!doctype html>
   </div>
 
   <div id="result" class="card hidden">
+    <div id="route" class="route hidden"></div>
     <strong>Completion</strong> <span id="cacheBadge" class="badge hidden"></span>
     <div id="completion" class="completion"></div>
 
     <div id="examples" class="examples"></div>
     <div id="meta" class="meta"></div>
 
-    <button id="promote" class="secondary">👍 Good — add to example bank</button>
+    <div class="row">
+      <button id="promote" class="secondary">👍 Good — add to example bank</button>
+      <label class="inline">teach route
+        <select id="promoteRoute"><option value="">— don't teach —</option></select>
+      </label>
+    </div>
     <span id="promoteMsg" class="meta"></span>
   </div>
 
@@ -829,7 +1057,21 @@ const INDEX_HTML = `<!doctype html>
 
 <script>
 const $ = (id) => document.getElementById(id);
-let lastInput = "", lastCompletion = "";
+let lastInput = "", lastCompletion = "", lastRoute = "";
+
+// Populate the "teach route" picker from the known route labels.
+async function loadRoutes() {
+  try {
+    const res = await fetch("/routes");
+    const data = await res.json();
+    for (const r of data.routes || []) {
+      const opt = document.createElement("option");
+      opt.value = r; opt.textContent = r;
+      $("promoteRoute").appendChild(opt);
+    }
+  } catch { /* picker just stays at "don't teach" */ }
+}
+loadRoutes();
 
 async function refreshCount() {
   try {
@@ -837,9 +1079,11 @@ async function refreshCount() {
     const data = await res.json();
     $("count").textContent = data.exampleCount;
     $("cacheCount").textContent = data.cacheCount ?? 0;
+    $("routeCount").textContent = data.routeCount ?? 0;
   } catch {
     $("count").textContent = "?";
     $("cacheCount").textContent = "?";
+    $("routeCount").textContent = "?";
   }
 }
 refreshCount();
@@ -861,6 +1105,19 @@ function showError(msg) {
   $("error").classList.remove("hidden");
 }
 
+function renderRoute(data) {
+  const el = $("route");
+  if (!data.route) { el.classList.add("hidden"); return; }
+  const cls = data.routeMatched ? "chip" : "chip fallback";
+  const tail = data.routeMatched
+    ? '<span class="sim">sim ' + data.routeSimilarity + "</span>"
+    : '<span class="sim">no confident match (sim ' + data.routeSimilarity +
+      ") — fell back</span>";
+  el.innerHTML = "Routed to <span class=\\"" + cls + "\\">" +
+    data.route.replace(/</g, "&lt;") + "</span>" + tail;
+  el.classList.remove("hidden");
+}
+
 function renderExamples(exs) {
   $("examples").innerHTML = exs && exs.length
     ? "<strong>Retrieved examples (" + exs.length + ")</strong>" +
@@ -873,9 +1130,14 @@ function renderExamples(exs) {
 // Dispatch one parsed SSE event to the UI.
 function onSSE(event, data) {
   if (event === "examples") {
+    renderRoute(data);
     renderExamples(data.fewShotExamples);
     $("completion").textContent = "";
     lastInput = data.input;
+    // Pre-select the picker to the matched route so promoting also reinforces
+    // it by default; a fallback leaves it on "don't teach" for the user to set.
+    lastRoute = data.routeMatched ? data.route : "";
+    $("promoteRoute").value = lastRoute;
   } else if (event === "cached") {
     // Cache hit: flag it; the cached completion arrives as the next delta.
     const badge = $("cacheBadge");
@@ -906,6 +1168,7 @@ $("infer").onclick = async () => {
   $("promote").disabled = true;
   $("promoteMsg").textContent = "";
   $("cacheBadge").classList.add("hidden");
+  $("route").classList.add("hidden");
   lastInput = input;
   lastCompletion = "";
   $("completion").textContent = "Generating completion…";
@@ -969,11 +1232,15 @@ $("clearCache").onclick = async () => {
 $("promote").onclick = async () => {
   $("promote").disabled = true;
   try {
+    const route = $("promoteRoute").value;
     const data = await postJSON("/feedback", {
       input: lastInput,
       completion: lastCompletion,
+      route, // empty string -> example bank only, router untouched
     });
-    $("promoteMsg").textContent = "Stored as " + data.stored;
+    $("promoteMsg").textContent = data.routeStored
+      ? "Stored as " + data.stored + " · taught route '" + route + "'"
+      : "Stored as " + data.stored;
     refreshCount();
   } catch (e) {
     $("promoteMsg").textContent = "Failed: " + e.message;

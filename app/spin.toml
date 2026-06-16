@@ -37,6 +37,7 @@ chat_model = "{{ chat_model }}"
 inference_api_key = "{{ inference_api_key }}"
 cache_threshold = "{{ cache_threshold }}"
 cache_ttl_seconds = "{{ cache_ttl_seconds }}"
+route_threshold = "{{ route_threshold }}"
 
 [variables]
 # Override at deploy time, e.g.:
@@ -60,3 +61,8 @@ inference_api_key = { default = "", secret = true }
 cache_threshold = { default = "0.95" }
 # How long (seconds) a cached completion lives. 0 disables expiry.
 cache_ttl_seconds = { default = "3600" }
+# Semantic router. Minimum cosine similarity to the nearest labeled exemplar
+# (see scripts/routes.json) for the input to be assigned that intent's route and
+# system prompt. Below this it falls back to the general route. Lower = more
+# inputs get force-fit to a specialist prompt; higher = stricter routing.
+route_threshold = { default = "0.6" }

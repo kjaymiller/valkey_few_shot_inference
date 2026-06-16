@@ -9,7 +9,8 @@
     "build:wasm": "mkdir -p target && j2w -i dist/index.js -o target/few-shot.wasm --trigger-type spin3-http",
     "check:frontend": "node scripts/check-frontend.mjs",
     "build": "npm run check:frontend && npm run build:js && npm run build:wasm",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "seed:routes": "node scripts/seed-routes.mjs"
   },
   "dependencies": {
     "@fermyon/spin-sdk": "^3.0.0",

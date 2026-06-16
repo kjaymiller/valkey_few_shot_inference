@@ -45,3 +45,9 @@ description = "Seed the example bank against a running app"
 dir = "app"
 env = { APP_URL = "http://127.0.0.1:3000" }
 run = "npm run seed"
+
+[tasks.seed-routes]
+description = "Seed the semantic router exemplars against a running app"
+dir = "app"
+env = { APP_URL = "http://127.0.0.1:3000" }
+run = "npm run seed:routes"
